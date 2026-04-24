@@ -1,6 +1,7 @@
 package com.swedbank.bankingapi.api;
 
 import com.swedbank.bankingapi.client.ExternalLoggingException;
+import com.swedbank.bankingapi.service.AccountNotFoundException;
 import com.swedbank.bankingapi.service.InsufficientFundsException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -44,6 +45,20 @@ public class ApiExceptionHandler {
     public ProblemDetail handleInsufficientFunds(InsufficientFundsException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
         problemDetail.setTitle("Insufficient funds");
+        return problemDetail;
+    }
+
+    /**
+     * Maps account not found failures to a not found response.
+     *
+     * @param ex account not found exception
+     * @return RFC 7807 problem detail response
+     */
+    @ExceptionHandler(AccountNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ProblemDetail handleAccountNotFound(AccountNotFoundException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problemDetail.setTitle("Account not found");
         return problemDetail;
     }
 

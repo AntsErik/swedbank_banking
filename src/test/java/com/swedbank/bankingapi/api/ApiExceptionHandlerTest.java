@@ -1,6 +1,7 @@
 package com.swedbank.bankingapi.api;
 
 import com.swedbank.bankingapi.client.ExternalLoggingException;
+import com.swedbank.bankingapi.service.AccountNotFoundException;
 import com.swedbank.bankingapi.service.InsufficientFundsException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,14 @@ class ApiExceptionHandlerTest {
 
         assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY.value());
         assertThat(problemDetail.getTitle()).isEqualTo("Insufficient funds");
+    }
+
+    @Test
+    void handleAccountNotFoundReturnsNotFoundProblem() {
+        ProblemDetail problemDetail = apiExceptionHandler.handleAccountNotFound(new AccountNotFoundException("account not found"));
+
+        assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
+        assertThat(problemDetail.getTitle()).isEqualTo("Account not found");
     }
 
     @Test

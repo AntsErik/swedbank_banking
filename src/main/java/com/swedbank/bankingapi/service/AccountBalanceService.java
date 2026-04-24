@@ -99,6 +99,21 @@ public class AccountBalanceService {
     }
 
     /**
+     * Retrieves the current EUR balance for the given account.
+     *
+     * @param accountId account identifier
+     * @return current balance response
+     * @throws AccountNotFoundException if no EUR balance exists for the account
+     */
+    public BalanceResponse getBalance(UUID accountId) {
+        AccountBalance accountBalance = accountBalanceRepository
+                .findByAccountIdAndCurrency(accountId, ONLY_SUPPORTED_CURRENCY)
+                .orElseThrow(() -> new AccountNotFoundException("No EUR balance found for account " + accountId));
+
+        return toResponse(accountBalance);
+    }
+
+    /**
      * Normalizes monetary values to two decimal places using bankers rounding.
      *
      * @param amount amount to normalize

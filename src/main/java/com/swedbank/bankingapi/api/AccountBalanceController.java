@@ -4,6 +4,7 @@ import com.swedbank.bankingapi.api.dto.BalanceResponse;
 import com.swedbank.bankingapi.api.dto.MoneyRequest;
 import com.swedbank.bankingapi.service.AccountBalanceService;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -58,5 +59,16 @@ public class AccountBalanceController {
     @PostMapping("/debits")
     public BalanceResponse debit(@PathVariable UUID accountId, @Valid @RequestBody MoneyRequest request) {
         return accountBalanceService.debitMoney(accountId, request.amount());
+    }
+
+    /**
+     * Retrieves the current EUR balance for the given account.
+     *
+     * @param accountId account identifier
+     * @return current balance response
+     */
+    @GetMapping
+    public BalanceResponse getBalance(@PathVariable UUID accountId) {
+        return accountBalanceService.getBalance(accountId);
     }
 }

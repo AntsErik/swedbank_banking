@@ -105,6 +105,29 @@ class AccountBalanceServiceTest {
         verify(externalLoggingClient).logDebitAttempt(accountId, scaled("25.00"));
     }
 
+    @Test
+    void getBalanceReturnsCurrentBalance() {
+        UUID accountId = UUID.randomUUID();
+        AccountBalance accountBalance = new AccountBalance(accountId, CurrencyCode.EUR, scaled("50.75"));
+        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.of(accountBalance));
+
+        BalanceResponse response = accountBalanceService.getBalance(accountId);
+
+        assertThat(response.accountId()).isEqualTo(accountId);
+        assertThat(response.currency()).isEqualTo("EUR");
+        assertThat(response.balance()).isEqualByComparingTo("50.75");
+    }
+
+    @Test
+    void getBalanceThrowsAccountNotFoundExceptionWhenBalanceDoesNotExist() {
+        UUID accountId = UUID.randomUUID();
+        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> accountBalanceService.getBalance(accountId))
+                .isInstanceOf(AccountNotFoundException.class)
+                .hasMessageContaining("No EUR balance found");
+    }
+
     private BigDecimal scaled(String value) {
         return new BigDecimal(value).setScale(2, RoundingMode.HALF_EVEN);
     }

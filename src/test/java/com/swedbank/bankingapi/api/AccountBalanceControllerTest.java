@@ -3,6 +3,7 @@ package com.swedbank.bankingapi.api;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swedbank.bankingapi.api.dto.BalanceResponse;
 import com.swedbank.bankingapi.service.AccountBalanceService;
+import com.swedbank.bankingapi.service.AccountNotFoundException;
 import com.swedbank.bankingapi.service.InsufficientFundsException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -90,6 +92,32 @@ class AccountBalanceControllerTest {
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation failed"));
+    }
+
+    @Test
+    void getBalanceReturnsCurrentBalance() throws Exception {
+        UUID accountId = UUID.randomUUID();
+        BalanceResponse response = new BalanceResponse(accountId, "EUR", new BigDecimal("50.75"));
+        when(accountBalanceService.getBalance(eq(accountId))).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/accounts/{accountId}", accountId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountId").value(accountId.toString()))
+                .andExpect(jsonPath("$.currency").value("EUR"))
+                .andExpect(jsonPath("$.balance").value(50.75));
+    }
+
+    @Test
+    void getBalanceReturnsNotFoundWhenAccountNotFound() throws Exception {
+        UUID accountId = UUID.randomUUID();
+        when(accountBalanceService.getBalance(eq(accountId)))
+                .thenThrow(new AccountNotFoundException("No EUR balance found for account " + accountId));
+
+        mockMvc.perform(get("/api/v1/accounts/{accountId}", accountId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.title").value("Account not found"));
     }
 
     private record DepositPayload(String amount) {

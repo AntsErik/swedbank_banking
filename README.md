@@ -89,6 +89,23 @@ Body:
 }
 ```
 
+### Get Balance
+GET /api/v1/accounts/{accountId}
+
+Returns the current account balance in EUR.
+
+Response (200 OK):
+```json
+{
+  "accountId": "11111111-1111-1111-1111-111111111111",
+  "currency": "EUR",
+  "amount": 75.00
+}
+```
+
+Error responses:
+- 404 NOT_FOUND: Account balance does not exist (no deposit created yet)
+
 ### Example curl
 ```bash
 ACCOUNT_ID="11111111-1111-1111-1111-111111111111"
@@ -100,6 +117,8 @@ curl -X POST "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID/deposits" \
 curl -X POST "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID/debits" \
   -H "Content-Type: application/json" \
   -d '{"amount":25.00}'
+
+curl -X GET "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID"
 ```
 
 ## Testing
