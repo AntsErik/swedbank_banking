@@ -1,0 +1,44 @@
+package com.swedbank.bankingapi.api;
+
+import com.swedbank.bankingapi.client.ExternalLoggingException;
+import com.swedbank.bankingapi.service.InsufficientFundsException;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit tests for {@link ApiExceptionHandler}.
+ *
+ * @author Ants-Erik Noormagi (AEN)
+ * @since v1.0
+ */
+class ApiExceptionHandlerTest {
+
+    private final ApiExceptionHandler apiExceptionHandler = new ApiExceptionHandler();
+
+    @Test
+    void handleExternalFailureReturnsBadGatewayProblem() {
+        ProblemDetail problemDetail = apiExceptionHandler.handleExternalFailure(new ExternalLoggingException("external failed"));
+
+        assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY.value());
+        assertThat(problemDetail.getTitle()).isEqualTo("External logging failure");
+    }
+
+    @Test
+    void handleInsufficientFundsReturnsUnprocessableEntityProblem() {
+        ProblemDetail problemDetail = apiExceptionHandler.handleInsufficientFunds(new InsufficientFundsException("not enough money"));
+
+        assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY.value());
+        assertThat(problemDetail.getTitle()).isEqualTo("Insufficient funds");
+    }
+
+    @Test
+    void handleValidationErrorReturnsBadRequestProblem() {
+        ProblemDetail problemDetail = apiExceptionHandler.handleValidationError(new IllegalArgumentException("invalid"));
+
+        assertThat(problemDetail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(problemDetail.getTitle()).isEqualTo("Validation failed");
+    }
+}
