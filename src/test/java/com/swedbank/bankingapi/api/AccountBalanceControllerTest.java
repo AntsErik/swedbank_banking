@@ -2,6 +2,7 @@ package com.swedbank.bankingapi.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swedbank.bankingapi.api.dto.BalanceResponse;
+import com.swedbank.bankingapi.domain.CurrencyCode;
 import com.swedbank.bankingapi.service.AccountBalanceService;
 import com.swedbank.bankingapi.service.AccountNotFoundException;
 import com.swedbank.bankingapi.service.InsufficientFundsException;
@@ -46,11 +47,11 @@ class AccountBalanceControllerTest {
     void depositReturnsUpdatedBalance() throws Exception {
         UUID accountId = UUID.randomUUID();
         BalanceResponse response = new BalanceResponse(accountId, "EUR", new BigDecimal("100.00"));
-        when(accountBalanceService.addMoney(eq(accountId), eq(new BigDecimal("100.00")))).thenReturn(response);
+        when(accountBalanceService.addMoney(eq(accountId), eq(new BigDecimal("100.00")), eq(CurrencyCode.EUR))).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/accounts/{accountId}/deposits", accountId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new DepositPayload("100.00"))))
+                        .content(objectMapper.writeValueAsString(new MoneyPayload("100.00", "EUR"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountId").value(accountId.toString()))
                 .andExpect(jsonPath("$.currency").value("EUR"))
@@ -61,11 +62,11 @@ class AccountBalanceControllerTest {
     void debitReturnsUpdatedBalance() throws Exception {
         UUID accountId = UUID.randomUUID();
         BalanceResponse response = new BalanceResponse(accountId, "EUR", new BigDecimal("75.00"));
-        when(accountBalanceService.debitMoney(eq(accountId), eq(new BigDecimal("25.00")))).thenReturn(response);
+        when(accountBalanceService.debitMoney(eq(accountId), eq(new BigDecimal("25.00")), eq(CurrencyCode.EUR))).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/accounts/{accountId}/debits", accountId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new DepositPayload("25.00"))))
+                        .content(objectMapper.writeValueAsString(new MoneyPayload("25.00", "EUR"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.balance").value(75.00));
     }
@@ -73,12 +74,12 @@ class AccountBalanceControllerTest {
     @Test
     void debitReturnsUnprocessableEntityWhenServiceThrowsInsufficientFunds() throws Exception {
         UUID accountId = UUID.randomUUID();
-        when(accountBalanceService.debitMoney(eq(accountId), eq(new BigDecimal("25.00"))))
+        when(accountBalanceService.debitMoney(eq(accountId), eq(new BigDecimal("25.00")), eq(CurrencyCode.EUR)))
                 .thenThrow(new InsufficientFundsException("Insufficient EUR funds"));
 
         mockMvc.perform(post("/api/v1/accounts/{accountId}/debits", accountId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new DepositPayload("25.00"))))
+                        .content(objectMapper.writeValueAsString(new MoneyPayload("25.00", "EUR"))))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.title").value("Insufficient funds"));
     }
@@ -98,9 +99,10 @@ class AccountBalanceControllerTest {
     void getBalanceReturnsCurrentBalance() throws Exception {
         UUID accountId = UUID.randomUUID();
         BalanceResponse response = new BalanceResponse(accountId, "EUR", new BigDecimal("50.75"));
-        when(accountBalanceService.getBalance(eq(accountId))).thenReturn(response);
+        when(accountBalanceService.getBalance(eq(accountId), eq(CurrencyCode.EUR))).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/accounts/{accountId}", accountId)
+                        .param("currency", "EUR")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountId").value(accountId.toString()))
@@ -111,15 +113,16 @@ class AccountBalanceControllerTest {
     @Test
     void getBalanceReturnsNotFoundWhenAccountNotFound() throws Exception {
         UUID accountId = UUID.randomUUID();
-        when(accountBalanceService.getBalance(eq(accountId)))
+        when(accountBalanceService.getBalance(eq(accountId), eq(CurrencyCode.EUR)))
                 .thenThrow(new AccountNotFoundException("No EUR balance found for account " + accountId));
 
         mockMvc.perform(get("/api/v1/accounts/{accountId}", accountId)
+                        .param("currency", "EUR")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("Account not found"));
     }
 
-    private record DepositPayload(String amount) {
+    private record MoneyPayload(String amount, String currency) {
     }
 }

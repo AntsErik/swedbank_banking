@@ -14,17 +14,13 @@ import java.util.UUID;
 
 /**
  * Coordinates deposit and debit operations for account balances.
+ * Supports multiple currencies per account with independent balance tracking.
  *
  * @author Ants-Erik Noormagi (AEN)
  * @since v1.0
  */
 @Service
 public class AccountBalanceService {
-
-    /**
-     * Single currency currently supported by this first iteration of the service.
-     */
-    private static final CurrencyCode ONLY_SUPPORTED_CURRENCY = CurrencyCode.EUR;
 
     /**
      * Repository used for balance persistence.
@@ -49,18 +45,20 @@ public class AccountBalanceService {
     }
 
     /**
-     * Deposits money into the EUR balance of the given account.
+     * Deposits money into the specified currency balance of the given account.
+     * Creates a new balance entry if one does not exist for the currency.
      *
      * @param accountId account identifier
      * @param amount amount to deposit
+     * @param currency currency to deposit in (EUR, USD, SEK, GBP)
      * @return updated balance response
      */
     @Transactional
-    public BalanceResponse addMoney(UUID accountId, BigDecimal amount) {
+    public BalanceResponse addMoney(UUID accountId, BigDecimal amount, CurrencyCode currency) {
         BigDecimal normalizedAmount = normalizeAmount(amount);
         AccountBalance accountBalance = accountBalanceRepository
-                .findByAccountIdAndCurrency(accountId, ONLY_SUPPORTED_CURRENCY)
-                .orElseGet(() -> new AccountBalance(accountId, ONLY_SUPPORTED_CURRENCY, BigDecimal.ZERO.setScale(2, RoundingMode.HALF_EVEN)));
+                .findByAccountIdAndCurrency(accountId, currency)
+                .orElseGet(() -> new AccountBalance(accountId, currency, BigDecimal.ZERO.setScale(2, RoundingMode.HALF_EVEN)));
 
         BigDecimal newBalance = accountBalance.getBalance().add(normalizedAmount).setScale(2, RoundingMode.HALF_EVEN);
         accountBalance.setBalance(newBalance);
@@ -70,24 +68,27 @@ public class AccountBalanceService {
     }
 
     /**
-     * Debits money from the EUR balance of the given account after the external logging call succeeds.
+     * Debits money from the specified currency balance of the given account.
+     * The external logging call must succeed before the debit is processed.
      *
      * @param accountId account identifier
      * @param amount amount to debit
+     * @param currency currency to debit from (EUR, USD, SEK, GBP)
      * @return updated balance response
+     * @throws InsufficientFundsException if balance is not found or is insufficient
      */
     @Transactional
-    public BalanceResponse debitMoney(UUID accountId, BigDecimal amount) {
+    public BalanceResponse debitMoney(UUID accountId, BigDecimal amount, CurrencyCode currency) {
         BigDecimal normalizedAmount = normalizeAmount(amount);
         externalLoggingClient.logDebitAttempt(accountId, normalizedAmount);
 
         AccountBalance accountBalance = accountBalanceRepository
-                .findByAccountIdAndCurrency(accountId, ONLY_SUPPORTED_CURRENCY)
-                .orElseThrow(() -> new InsufficientFundsException("No EUR balance found for account " + accountId));
+                .findByAccountIdAndCurrency(accountId, currency)
+                .orElseThrow(() -> new InsufficientFundsException("No " + currency + " balance found for account " + accountId));
 
         if (accountBalance.getBalance().compareTo(normalizedAmount) < 0) {
             throw new InsufficientFundsException(
-                    "Insufficient EUR funds. Current balance: " + accountBalance.getBalance() + ", requested: " + normalizedAmount
+                    "Insufficient " + currency + " funds. Current balance: " + accountBalance.getBalance() + ", requested: " + normalizedAmount
             );
         }
 
@@ -99,16 +100,17 @@ public class AccountBalanceService {
     }
 
     /**
-     * Retrieves the current EUR balance for the given account.
+     * Retrieves the current balance for the given account and currency.
      *
      * @param accountId account identifier
+     * @param currency currency to retrieve balance for (EUR, USD, SEK, GBP)
      * @return current balance response
-     * @throws AccountNotFoundException if no EUR balance exists for the account
+     * @throws AccountNotFoundException if no balance exists for the account/currency pair
      */
-    public BalanceResponse getBalance(UUID accountId) {
+    public BalanceResponse getBalance(UUID accountId, CurrencyCode currency) {
         AccountBalance accountBalance = accountBalanceRepository
-                .findByAccountIdAndCurrency(accountId, ONLY_SUPPORTED_CURRENCY)
-                .orElseThrow(() -> new AccountNotFoundException("No EUR balance found for account " + accountId));
+                .findByAccountIdAndCurrency(accountId, currency)
+                .orElseThrow(() -> new AccountNotFoundException("No " + currency + " balance found for account " + accountId));
 
         return toResponse(accountBalance);
     }

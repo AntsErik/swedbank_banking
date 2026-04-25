@@ -47,7 +47,7 @@ class AccountBalanceServiceTest {
         when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.empty());
         when(accountBalanceRepository.save(any(AccountBalance.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        BalanceResponse response = accountBalanceService.addMoney(accountId, new BigDecimal("100"));
+        BalanceResponse response = accountBalanceService.addMoney(accountId, new BigDecimal("100"), CurrencyCode.EUR);
 
         assertThat(response.accountId()).isEqualTo(accountId);
         assertThat(response.currency()).isEqualTo("EUR");
@@ -62,7 +62,7 @@ class AccountBalanceServiceTest {
         when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.of(accountBalance));
         when(accountBalanceRepository.save(accountBalance)).thenReturn(accountBalance);
 
-        BalanceResponse response = accountBalanceService.addMoney(accountId, new BigDecimal("10.235"));
+        BalanceResponse response = accountBalanceService.addMoney(accountId, new BigDecimal("10.235"), CurrencyCode.EUR);
 
         assertThat(response.balance()).isEqualByComparingTo("35.24");
     }
@@ -74,7 +74,7 @@ class AccountBalanceServiceTest {
         when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.of(accountBalance));
         when(accountBalanceRepository.save(accountBalance)).thenReturn(accountBalance);
 
-        BalanceResponse response = accountBalanceService.debitMoney(accountId, new BigDecimal("25"));
+        BalanceResponse response = accountBalanceService.debitMoney(accountId, new BigDecimal("25"), CurrencyCode.EUR);
 
         assertThat(response.balance()).isEqualByComparingTo("75.00");
         verify(externalLoggingClient).logDebitAttempt(accountId, scaled("25.00"));
@@ -85,7 +85,7 @@ class AccountBalanceServiceTest {
         UUID accountId = UUID.randomUUID();
         when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> accountBalanceService.debitMoney(accountId, new BigDecimal("25.00")))
+        assertThatThrownBy(() -> accountBalanceService.debitMoney(accountId, new BigDecimal("25.00"), CurrencyCode.EUR))
                 .isInstanceOf(InsufficientFundsException.class)
                 .hasMessageContaining("No EUR balance found");
 
@@ -98,7 +98,7 @@ class AccountBalanceServiceTest {
         AccountBalance accountBalance = new AccountBalance(accountId, CurrencyCode.EUR, scaled("10.00"));
         when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.of(accountBalance));
 
-        assertThatThrownBy(() -> accountBalanceService.debitMoney(accountId, new BigDecimal("25.00")))
+        assertThatThrownBy(() -> accountBalanceService.debitMoney(accountId, new BigDecimal("25.00"), CurrencyCode.EUR))
                 .isInstanceOf(InsufficientFundsException.class)
                 .hasMessageContaining("Insufficient EUR funds");
 
@@ -111,7 +111,7 @@ class AccountBalanceServiceTest {
         AccountBalance accountBalance = new AccountBalance(accountId, CurrencyCode.EUR, scaled("50.75"));
         when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.of(accountBalance));
 
-        BalanceResponse response = accountBalanceService.getBalance(accountId);
+        BalanceResponse response = accountBalanceService.getBalance(accountId, CurrencyCode.EUR);
 
         assertThat(response.accountId()).isEqualTo(accountId);
         assertThat(response.currency()).isEqualTo("EUR");
@@ -123,7 +123,7 @@ class AccountBalanceServiceTest {
         UUID accountId = UUID.randomUUID();
         when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> accountBalanceService.getBalance(accountId))
+        assertThatThrownBy(() -> accountBalanceService.getBalance(accountId, CurrencyCode.EUR))
                 .isInstanceOf(AccountNotFoundException.class)
                 .hasMessageContaining("No EUR balance found");
     }

@@ -1,8 +1,9 @@
 # Banking API (Java 17, Spring Boot)
 
-Minimal first step for the homework assignment with:
-- Add money to account (EUR only)
-- Debit money from account (EUR only)
+Multi-currency account management with:
+- Add/debit money to accounts in multiple currencies (EUR, USD, SEK, GBP)
+- Separate balance tracking per currency
+- Real-time currency exchange using Swedbank rates
 - Simulated external call before debit (httpstat.us)
 - Controller -> Service -> Repository structure
 - H2 database persistence
@@ -65,60 +66,127 @@ H2 console:
 - user: sa
 - password: (empty)
 
-## API endpoints (EUR only)
-Base path:
+## API endpoints (Multi-currency: EUR, USD, SEK, GBP)
+
+All endpoints support multiple currencies. Account balances are tracked separately per currency.
+
+### Account Operations
+Base path for account operations:
 - /api/v1/accounts/{accountId}
 
-### Deposit
+#### Deposit
 POST /api/v1/accounts/{accountId}/deposits
 
+Add money to the account (USD, SEK, or GBP). If no balance exists for the currency, it will be created.
+
 Body:
 ```json
 {
-  "amount": 100.00
+  "amount": 100.00,
+  "currency": "USD"
 }
 ```
 
-### Debit
+#### Debit
 POST /api/v1/accounts/{accountId}/debits
 
+Debit money from the account. External logging endpoint is called before the debit.
+
 Body:
 ```json
 {
-  "amount": 40.00
+  "amount": 40.00,
+  "currency": "USD"
 }
 ```
 
-### Get Balance
-GET /api/v1/accounts/{accountId}
+#### Get Balance
+GET /api/v1/accounts/{accountId}?currency=USD
 
-Returns the current account balance in EUR.
+Returns the current account balance for a specific currency.
 
 Response (200 OK):
 ```json
 {
   "accountId": "11111111-1111-1111-1111-111111111111",
-  "currency": "EUR",
-  "amount": 75.00
+  "currency": "USD",
+  "balance": 60.00
 }
 ```
 
 Error responses:
-- 404 NOT_FOUND: Account balance does not exist (no deposit created yet)
+- 404 NOT_FOUND: Account balance does not exist for the specified currency
+
+### Currency Exchange
+POST /api/v1/exchange
+
+Convert an amount between any supported currencies using current Swedbank exchange rates.
+
+Body:
+```json
+{
+  "amount": 100.00,
+  "fromCurrency": "USD",
+  "toCurrency": "EUR"
+}
+```
+
+Response (200 OK):
+```json
+{
+  "originalAmount": 100.00,
+  "originalCurrency": "USD",
+  "convertedAmount": 85.38,
+  "targetCurrency": "EUR",
+  "exchangeRate": 0.8538
+}
+```
 
 ### Example curl
 ```bash
 ACCOUNT_ID="11111111-1111-1111-1111-111111111111"
 
+# Deposit 100 USD into the account
 curl -X POST "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID/deposits" \
   -H "Content-Type: application/json" \
-  -d '{"amount":100.00}'
+  -d '{"amount":100.00,"currency":"USD"}'
 
+# Get USD balance
+curl -X GET "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID?currency=USD"
+
+# Debit 25 USD from the account
 curl -X POST "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID/debits" \
   -H "Content-Type: application/json" \
-  -d '{"amount":25.00}'
+  -d '{"amount":25.00,"currency":"USD"}'
 
-curl -X GET "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID"
+# Convert 100 USD to EUR using current Swedbank rates
+curl -X POST "http://localhost:8080/api/v1/exchange" \
+  -H "Content-Type: application/json" \
+  -d '{"amount":100.00,"fromCurrency":"USD","toCurrency":"EUR"}'
+```
+
+### Example PowerShell
+```powershell
+$ACCOUNT_ID = "11111111-1111-1111-1111-111111111111"
+$API_URL = "http://localhost:8080/api/v1/accounts"
+
+# Deposit 100 USD into the account
+Invoke-RestMethod -Uri "$API_URL/$ACCOUNT_ID/deposits" -Method Post `
+  -Headers @{"Content-Type" = "application/json"} `
+  -Body '{"amount":100.00,"currency":"USD"}' | ConvertTo-Json
+
+# Get USD balance (note: use backtick before the ? for query parameters)
+Invoke-RestMethod -Uri "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID`?currency=USD" -Method Get | ConvertTo-Json
+
+# Debit 25 USD from the account
+Invoke-RestMethod -Uri "$API_URL/$ACCOUNT_ID/debits" -Method Post `
+  -Headers @{"Content-Type" = "application/json"} `
+  -Body '{"amount":25.00,"currency":"USD"}' | ConvertTo-Json
+
+# Convert 100 USD to EUR using current Swedbank rates
+Invoke-RestMethod -Uri "http://localhost:8080/api/v1/exchange" -Method Post `
+  -Headers @{"Content-Type" = "application/json"} `
+  -Body '{"amount":100.00,"fromCurrency":"USD","toCurrency":"EUR"}' | ConvertTo-Json
 ```
 
 ## Testing
@@ -147,7 +215,10 @@ mvn -Dtest=AccountBalanceServiceTest test
 More detailed testing notes are available in [src/test/README.md](src/test/README.md).
 
 ## Notes
-- Debit fails with HTTP 422 when there is not enough balance.
+- Debit fails with HTTP 422 when there is not enough balance in the specified currency.
 - Debit fails with HTTP 502 if external logging endpoint fails.
-- This is intentionally minimal for step 1: only EUR.
-- Next steps can add external call simulation, multi-currency balances, get balance, and exchange.
+- Currency support: EUR (base), USD, SEK, GBP with Swedbank exchange rates.
+- Exchange rates are fetched from Swedbank (https://www.swedbank.ee/private/d2d/payments2/rates/currencyExchange).
+- Each account can hold multiple currency balances tracked independently.
+- Account balances are queried separately per currency.
+- Conversions use ECB reference rates with 2-decimal precision (HALF_EVEN rounding).

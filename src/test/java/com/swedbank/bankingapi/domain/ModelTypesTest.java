@@ -35,12 +35,13 @@ class ModelTypesTest {
     void dtoRecordsExposeAssignedValues() {
         UUID accountId = UUID.randomUUID();
         BalanceResponse balanceResponse = new BalanceResponse(accountId, "EUR", new BigDecimal("25.00"));
-        MoneyRequest moneyRequest = new MoneyRequest(new BigDecimal("30.00"));
+        MoneyRequest moneyRequest = new MoneyRequest(new BigDecimal("30.00"), CurrencyCode.EUR);
 
         assertThat(balanceResponse.accountId()).isEqualTo(accountId);
         assertThat(balanceResponse.currency()).isEqualTo("EUR");
         assertThat(balanceResponse.balance()).isEqualByComparingTo("25.00");
         assertThat(moneyRequest.amount()).isEqualByComparingTo("30.00");
+        assertThat(moneyRequest.currency()).isEqualTo(CurrencyCode.EUR);
         assertThat(CurrencyCode.valueOf("EUR")).isEqualTo(CurrencyCode.EUR);
     }
 
