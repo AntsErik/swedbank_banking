@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,31 +72,27 @@ public class SwedbankExchangeRateClient implements ExchangeRateClient {
     @Override
     public List<ExchangeRate> fetchExchangeRates() {
         log.info("Fetching exchange rates from local CSV file");
-        List<ExchangeRate> rates = new ArrayList<>();
         Instant now = Instant.now();
         String fileName = "currency-exchange-rates-2026-04-24.csv";
 
-        try (InputStream is = getClass().getClassLoader().getResourceAsStream(fileName);
-                BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+        InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(fileName);
 
-            if (is == null) {
-                log.error("CSV file not found in resources: {}", fileName);
-                return getFallbackRates(now);
-            }
+        if (is == null) {
+            log.error("CSV file not found in resources: {}", fileName);
+            return getFallbackRates(now);
+        }
 
-            rates = reader.lines()
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            return reader.lines()
                     .skip(1)
                     .map(line -> parseLine(line, now))
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .toList();
-
         } catch (Exception e) {
             log.error("Error reading CSV file, falling back to hardcoded rates", e);
             return getFallbackRates(now);
         }
-
-        return rates;
     }
 
     /**
