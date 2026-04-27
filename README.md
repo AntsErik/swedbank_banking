@@ -120,6 +120,11 @@ Body:
   "currency": "USD"
 }
 ```
+Error responses:
+- 400 BAD_REQUEST: Invalid input (e.g., negative amount).
+- 404 NOT_FOUND: The account exists, but the requested currency balance row is missing.
+- 422 UNPROCESSABLE_ENTITY: The balance exists, but the amount is greater than the available funds.
+- 502 BAD_GATEWAY: The required external logging call failed.
 
 #### Get Balance
 GET /api/v1/accounts/{accountId}?currency=USD
@@ -136,7 +141,7 @@ Response (200 OK):
 ```
 
 Error responses:
-- 404 NOT_FOUND: Account balance does not exist for the specified currency
+- 404 NOT_FOUND: Specified currency balance does not exist for this account.
 
 ### Currency Exchange
 POST /api/v1/exchange
@@ -220,7 +225,7 @@ Invoke-RestMethod -Uri "http://localhost:8080/api/v1/exchange" -Method Post `
 ```
 
 ## Testing
-The project currently includes a first test suite covering the implemented EUR-only scope.
+The project currently includes a comprehensive test suite covering the multi-currency scope (EUR, USD, SEK, GBP).
 
 Covered areas:
 - service logic
@@ -250,8 +255,9 @@ More detailed testing notes are available in [src/test/README.md](src/test/READM
 
 ## Notes
 - **Maven Wrapper:** The project includes a Maven wrapper (`mvnw` / `mvnw.cmd`) for convenient builds without requiring Maven installation.
+- **Debit fails** with HTTP 404 if the requested currency balance does not exist for the account.
 - **Debit fails** with HTTP 422 when there is not enough balance in the specified currency.
-- **Debit fails** with HTTP 502 if external logging endpoint fails.
+- **Debit fails** with HTTP 502 if the external logging endpoint fails.
 - **Exchange transfers money** between account currency balances (e.g., 50 USD → EUR). Both debits and credits happen atomically in a single transaction.
 - **Currency support:** EUR (base), USD, SEK, GBP with Swedbank exchange rates.
 - **Exchange rates:** Loaded from src/main/resources/currency-exchange-rates-2026-04-24.csv. The system defaults to internal fallback rates if the file is missing or corrupted.

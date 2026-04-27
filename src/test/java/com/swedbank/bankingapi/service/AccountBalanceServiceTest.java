@@ -44,8 +44,10 @@ class AccountBalanceServiceTest {
     @Test
     void addMoneyCreatesNewEurBalanceWhenAccountHasNoExistingBalance() {
         UUID accountId = UUID.randomUUID();
-        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.empty());
-        when(accountBalanceRepository.save(any(AccountBalance.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR))
+                .thenReturn(Optional.empty());
+        when(accountBalanceRepository.save(any(AccountBalance.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         BalanceResponse response = accountBalanceService.addMoney(accountId, new BigDecimal("100"), CurrencyCode.EUR);
 
@@ -59,10 +61,12 @@ class AccountBalanceServiceTest {
     void addMoneyUpdatesExistingBalance() {
         UUID accountId = UUID.randomUUID();
         AccountBalance accountBalance = new AccountBalance(accountId, CurrencyCode.EUR, scaled("25.00"));
-        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.of(accountBalance));
+        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR))
+                .thenReturn(Optional.of(accountBalance));
         when(accountBalanceRepository.save(accountBalance)).thenReturn(accountBalance);
 
-        BalanceResponse response = accountBalanceService.addMoney(accountId, new BigDecimal("10.235"), CurrencyCode.EUR);
+        BalanceResponse response = accountBalanceService.addMoney(accountId, new BigDecimal("10.235"),
+                CurrencyCode.EUR);
 
         assertThat(response.balance()).isEqualByComparingTo("35.24");
     }
@@ -71,7 +75,8 @@ class AccountBalanceServiceTest {
     void debitMoneyLogsExternallyAndUpdatesBalance() {
         UUID accountId = UUID.randomUUID();
         AccountBalance accountBalance = new AccountBalance(accountId, CurrencyCode.EUR, scaled("100.00"));
-        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.of(accountBalance));
+        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR))
+                .thenReturn(Optional.of(accountBalance));
         when(accountBalanceRepository.save(accountBalance)).thenReturn(accountBalance);
 
         BalanceResponse response = accountBalanceService.debitMoney(accountId, new BigDecimal("25"), CurrencyCode.EUR);
@@ -83,11 +88,12 @@ class AccountBalanceServiceTest {
     @Test
     void debitMoneyFailsWhenBalanceDoesNotExist() {
         UUID accountId = UUID.randomUUID();
-        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.empty());
+        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> accountBalanceService.debitMoney(accountId, new BigDecimal("25.00"), CurrencyCode.EUR))
-                .isInstanceOf(InsufficientFundsException.class)
-                .hasMessageContaining("No EUR balance found");
+                .isInstanceOf(AccountBalanceNotFoundException.class)
+                .hasMessageContaining("Balance for EUR not found");
 
         verify(externalLoggingClient).logDebitAttempt(accountId, scaled("25.00"));
     }
@@ -96,7 +102,8 @@ class AccountBalanceServiceTest {
     void debitMoneyFailsWhenBalanceIsInsufficient() {
         UUID accountId = UUID.randomUUID();
         AccountBalance accountBalance = new AccountBalance(accountId, CurrencyCode.EUR, scaled("10.00"));
-        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.of(accountBalance));
+        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR))
+                .thenReturn(Optional.of(accountBalance));
 
         assertThatThrownBy(() -> accountBalanceService.debitMoney(accountId, new BigDecimal("25.00"), CurrencyCode.EUR))
                 .isInstanceOf(InsufficientFundsException.class)
@@ -109,7 +116,8 @@ class AccountBalanceServiceTest {
     void getBalanceReturnsCurrentBalance() {
         UUID accountId = UUID.randomUUID();
         AccountBalance accountBalance = new AccountBalance(accountId, CurrencyCode.EUR, scaled("50.75"));
-        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.of(accountBalance));
+        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR))
+                .thenReturn(Optional.of(accountBalance));
 
         BalanceResponse response = accountBalanceService.getBalance(accountId, CurrencyCode.EUR);
 
@@ -121,7 +129,8 @@ class AccountBalanceServiceTest {
     @Test
     void getBalanceThrowsAccountNotFoundExceptionWhenBalanceDoesNotExist() {
         UUID accountId = UUID.randomUUID();
-        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR)).thenReturn(Optional.empty());
+        when(accountBalanceRepository.findByAccountIdAndCurrency(accountId, CurrencyCode.EUR))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> accountBalanceService.getBalance(accountId, CurrencyCode.EUR))
                 .isInstanceOf(AccountNotFoundException.class)

@@ -32,7 +32,8 @@ class HttpExternalLoggingClientTest {
 
         HttpExternalLoggingClient client = new HttpExternalLoggingClient(builder, "http://localhost/mock");
 
-        assertThatCode(() -> client.logDebitAttempt(UUID.randomUUID(), new BigDecimal("25.00"))).doesNotThrowAnyException();
+        assertThatCode(() -> client.logDebitAttempt(UUID.randomUUID(), new BigDecimal("25.00")))
+                .doesNotThrowAnyException();
     }
 
     @Test
@@ -40,7 +41,8 @@ class HttpExternalLoggingClientTest {
         RestClient.Builder builder = mock(RestClient.Builder.class);
         RestClient restClient = mock(RestClient.class, Answers.RETURNS_DEEP_STUBS);
         when(builder.build()).thenReturn(restClient);
-        when(restClient.get().uri(anyString()).retrieve().toBodilessEntity()).thenThrow(new RestClientException("boom"));
+        when(restClient.get().uri(anyString()).retrieve().toBodilessEntity())
+                .thenThrow(new RestClientException("boom"));
 
         HttpExternalLoggingClient client = new HttpExternalLoggingClient(builder, "http://localhost/mock");
 

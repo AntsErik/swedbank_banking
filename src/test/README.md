@@ -36,6 +36,9 @@ The current tests cover all implemented functionality:
 - `client/HttpExternalLoggingClientTest`
   Unit tests for successful and failing outbound logging calls.
 
+- `client/SwebankExchangeRateClientTest`
+  Verifies CSV resource loading, data parsing, and base currency (EUR) protection logic.
+
 - `domain/ModelTypesTest`
   Lightweight tests for entity, DTO, enum, and exception classes, including CurrencyCode enum variants and exchange rate DTOs.
 
