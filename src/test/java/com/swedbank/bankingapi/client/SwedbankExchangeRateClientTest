@@ -13,16 +13,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests for {@link SwebankExchangeRateClient}.
+ * Tests for {@link SwedbankExchangeRateClient}.
  * Verifies that currency rates are correctly loaded from the CSV resource.
  *
  * @author Ants-Erik Noormagi (AEN)
  * @since v1.0
  */
-class SwebankExchangeRateClientTest {
+class SwedbankExchangeRateClientTest {
 
     /** The client under test */
-    private SwebankExchangeRateClient client;
+    private SwedbankExchangeRateClient client;
 
     @BeforeEach
     void setUp() {

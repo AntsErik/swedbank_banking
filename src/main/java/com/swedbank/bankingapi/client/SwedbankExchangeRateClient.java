@@ -31,22 +31,22 @@ import java.util.Optional;
  * @since v1.0
  */
 @Component
-public class SwebankExchangeRateClient implements ExchangeRateClient {
+public class SwedbankExchangeRateClient implements ExchangeRateClient {
 
-    private static final Logger log = LoggerFactory.getLogger(SwebankExchangeRateClient.class);
+    private static final Logger log = LoggerFactory.getLogger(SwedbankExchangeRateClient.class);
 
     private final RestClient restClient;
 
     /**
      * Hardcoded exchange rates from Swedbank (as of 2026-04-24).
-     * These rates use the Euroopa Keskpanga (ECB) reference rates.
+     * These rates use the Europe Central Bank (ECB) reference rates.
      * Format: 1 currency unit = X EUR (buy rate used for conversion).
      */
     private static final Map<CurrencyCode, BigDecimal> FALLBACK_RATES = Map.ofEntries(
             Map.entry(CurrencyCode.EUR, BigDecimal.ONE),
-            Map.entry(CurrencyCode.USD, new BigDecimal("1.1712")),
-            Map.entry(CurrencyCode.SEK, new BigDecimal("10.82")),
-            Map.entry(CurrencyCode.GBP, new BigDecimal("0.86803")));
+            Map.entry(CurrencyCode.USD, new BigDecimal("0.853825")),
+            Map.entry(CurrencyCode.SEK, new BigDecimal("0.092421")),
+            Map.entry(CurrencyCode.GBP, new BigDecimal("1.15203")));
 
     /**
      * Inverse rates for converting FROM EUR to other currencies.
@@ -54,12 +54,11 @@ public class SwebankExchangeRateClient implements ExchangeRateClient {
      */
     private static final Map<CurrencyCode, BigDecimal> FALLBACK_INVERSE_RATES = Map.ofEntries(
             Map.entry(CurrencyCode.EUR, BigDecimal.ONE),
-            Map.entry(CurrencyCode.USD, new BigDecimal("0.8538")), // 1 / 1.1712
-            Map.entry(CurrencyCode.SEK, new BigDecimal("0.9242")), // 1 / 10.82
-            Map.entry(CurrencyCode.GBP, new BigDecimal("1.1521")) // 1 / 0.86803
-    );
+            Map.entry(CurrencyCode.USD, new BigDecimal("1.1712")),
+            Map.entry(CurrencyCode.SEK, new BigDecimal("10.82")),
+            Map.entry(CurrencyCode.GBP, new BigDecimal("0.86803")));
 
-    public SwebankExchangeRateClient(RestClient restClient) {
+    public SwedbankExchangeRateClient(RestClient restClient) {
         this.restClient = restClient;
     }
 
@@ -109,12 +108,24 @@ public class SwebankExchangeRateClient implements ExchangeRateClient {
      */
     private Optional<ExchangeRate> parseLine(String line, Instant now) {
         try {
-            String[] columns = line.split(",");
-            CurrencyCode code = CurrencyCode.valueOf(columns[0].trim());
-            BigDecimal toEur = new BigDecimal(columns[1].trim());
-            BigDecimal fromEur = new BigDecimal(columns[2].trim());
+            String[] columns = line.split(";");
+            if (columns.length < 4)
+                return Optional.empty();
 
-            return Optional.of(new ExchangeRate(code, toEur, fromEur, now));
+            String currencyCodeRaw = columns[0].replace("\"", "").trim();
+            String ecbRateRaw = columns[3].replace("\"", "").replace(",", ".").trim();
+
+            if (ecbRateRaw.isEmpty())
+                return Optional.empty();
+
+            CurrencyCode code = CurrencyCode.valueOf(currencyCodeRaw);
+            BigDecimal ecbQuote = new BigDecimal(ecbRateRaw);
+
+            BigDecimal fromEurRate = ecbQuote;
+
+            BigDecimal toEurRate = BigDecimal.ONE.divide(ecbQuote, 10, java.math.RoundingMode.HALF_EVEN);
+
+            return Optional.of(new ExchangeRate(code, toEurRate, fromEurRate, now));
         } catch (Exception e) {
             log.warn("Failed to parse CSV line: {}", line);
             return Optional.empty();
