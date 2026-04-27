@@ -66,9 +66,15 @@ H2 console:
 - user: sa
 - password: (empty)
 
+Swagger UI (Interactive API documentation):
+- http://localhost:8080/swagger-ui.html
+- Try out all endpoints directly from the browser
+
 ## API endpoints (Multi-currency: EUR, USD, SEK, GBP)
 
 All endpoints support multiple currencies. Account balances are tracked separately per currency.
+
+**Recommended: Use Swagger UI to test endpoints** — Open http://localhost:8080/swagger-ui.html in your browser to interactively test all endpoints.
 
 ### Account Operations
 Base path for account operations:
