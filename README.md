@@ -90,7 +90,9 @@ Body:
 #### Debit
 POST /api/v1/accounts/{accountId}/debits
 
-Debit money from the account. External logging endpoint is called before the debit.
+Debit money from the account. **Before processing the debit, the system calls an external logging endpoint** (configured in `external.logging-url`, default: `http://httpstat.us/200`). 
+- If the external call fails, the debit is **NOT processed** and an error is returned.
+- If the external call succeeds, the debit is processed.
 
 Body:
 ```json
