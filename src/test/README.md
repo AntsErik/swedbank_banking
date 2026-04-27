@@ -7,8 +7,8 @@ The current tests cover all implemented functionality:
 - Multi-currency deposits (EUR, USD, SEK, GBP)
 - Multi-currency debits (EUR, USD, SEK, GBP)
 - Multi-currency balance lookups with currency query parameter
-- Currency exchange operations (ConversionRequest/Response)
-- Exchange rate data models and validation
+- Currency exchange operations (transfers between account currency balances)
+- Exchange rate conversions with Swedbank rates
 - pre-debit external logging behavior
 - validation and exception mapping
 - repository lookup for account balances by currency
@@ -42,16 +42,22 @@ The current tests cover all implemented functionality:
 ## How to run
 Run the full test suite from project root:
 ```bash
+./mvnw test
+# or with system Maven:
 mvn test
 ```
 
 Run a single test class:
 ```bash
+./mvnw -Dtest=AccountBalanceServiceTest test
+# or:
 mvn -Dtest=AccountBalanceServiceTest test
 ```
 
 Run multiple specific tests:
 ```bash
+./mvnw -Dtest=AccountBalanceServiceTest,AccountBalanceControllerTest test
+# or:
 mvn -Dtest=AccountBalanceServiceTest,AccountBalanceControllerTest test
 ```
 

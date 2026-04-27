@@ -2,7 +2,7 @@ package com.swedbank.bankingapi.api;
 
 import com.swedbank.bankingapi.api.dto.ConversionRequest;
 import com.swedbank.bankingapi.api.dto.ConversionResponse;
-import com.swedbank.bankingapi.service.ExchangeRateService;
+import com.swedbank.bankingapi.service.AccountBalanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -13,66 +13,55 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
-
 /**
- * REST controller for currency exchange operations.
- * Provides conversion between supported currencies using Swedbank exchange rates.
+ * REST controller for currency exchange operations within an account.
+ * Transfers money from one currency balance to another using Swedbank exchange rates.
  *
  * @author Ants-Erik Noormagi (AEN)
  * @since v1.0
  */
 @RestController
 @RequestMapping("/api/v1/exchange")
-@Tag(name = "Currency Exchange", description = "Operations for currency conversion using Swedbank exchange rates")
+@Tag(name = "Currency Exchange", description = "Operations for currency conversion within an account using Swedbank exchange rates")
 public class ExchangeController {
 
     /**
-     * Service for currency conversion and exchange rate management.
+     * Service for account balance operations including currency exchange.
      */
-    private final ExchangeRateService exchangeRateService;
+    private final AccountBalanceService accountBalanceService;
 
     /**
      * Creates the exchange controller with its service dependency.
      *
-     * @param exchangeRateService service for exchange rate operations
+     * @param accountBalanceService service for balance and exchange operations
      */
-    public ExchangeController(ExchangeRateService exchangeRateService) {
-        this.exchangeRateService = exchangeRateService;
+    public ExchangeController(AccountBalanceService accountBalanceService) {
+        this.accountBalanceService = accountBalanceService;
     }
 
     /**
-     * Converts an amount between two currencies using current Swedbank exchange rates.
-     * Supports conversions between EUR, USD, SEK, and GBP.
+     * Exchanges currencies within an account.
+     * Debits the source currency and credits the target currency using current Swedbank rates.
+     * Both operations occur within a single transaction.
      *
-     * @param request conversion request with amount, source, and target currencies
-     * @return conversion response with converted amount and applied exchange rate
+     * @param request conversion request with accountId, amount, and source/target currencies
+     * @return conversion response with updated balances for both currencies
      */
     @PostMapping
-    @Operation(summary = "Convert between currencies", 
-               description = "Convert an amount from one currency to another using current Swedbank exchange rates")
+    @Operation(summary = "Exchange currencies within an account", 
+               description = "Transfer money from one currency balance to another using current Swedbank exchange rates")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Conversion successful"),
-        @ApiResponse(responseCode = "400", description = "Invalid request (unknown currency, negative amount, etc.)")
+        @ApiResponse(responseCode = "200", description = "Exchange successful, balances updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid request (unknown currency, negative amount, etc.)"),
+        @ApiResponse(responseCode = "404", description = "Source currency balance not found"),
+        @ApiResponse(responseCode = "422", description = "Insufficient funds in source currency")
     })
-    public ConversionResponse convert(@Valid @RequestBody ConversionRequest request) {
-        BigDecimal converted = exchangeRateService.convert(
+    public ConversionResponse exchange(@Valid @RequestBody ConversionRequest request) {
+        return accountBalanceService.exchangeCurrencies(
+                request.accountId(),
                 request.amount(),
                 request.fromCurrency(),
                 request.toCurrency()
-        );
-
-        // Calculate the exchange rate used (converted amount / original amount)
-        BigDecimal rate = request.amount().signum() == 0
-                ? BigDecimal.ONE
-                : converted.divide(request.amount(), 4, java.math.RoundingMode.HALF_EVEN);
-
-        return new ConversionResponse(
-                request.amount(),
-                request.fromCurrency(),
-                converted,
-                request.toCurrency(),
-                rate
         );
     }
 }

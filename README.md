@@ -18,24 +18,37 @@ Multi-currency account management with:
 
 ## Requirements
 - Java 17+
-- Maven 3.9+
+- Maven 3.9+ (or use the included Maven wrapper `mvnw`)
 
 ## Run locally
-From project root:
+
+**With Maven wrapper (recommended - no Maven installation required):**
+```powershell
+.\mvnw clean package
+java -jar .\target\banking-api-0.0.1-SNAPSHOT.jar
+```
+
+**With system Maven:**
 ```powershell
 mvn clean package
 java -jar .\target\banking-api-0.0.1-SNAPSHOT.jar
 ```
 
-Alternative (works on many setups):
+**Alternative (run directly without packaging):**
 ```powershell
-mvn clean spring-boot:run
+.\mvnw clean spring-boot:run
 ```
 
 ## Run from Bash / WSL
-This project also runs from bash, but the shell itself must have Java 17+ and Maven 3.9+ available.
 
-Once Java 17 is available in bash:
+**With Maven wrapper (recommended):**
+```bash
+./mvnw clean package
+chmod +x ./run-local.sh
+./run-local.sh
+```
+
+**With system Maven:**
 ```bash
 mvn clean package
 chmod +x ./run-local.sh
@@ -128,12 +141,13 @@ Error responses:
 ### Currency Exchange
 POST /api/v1/exchange
 
-Convert an amount between any supported currencies using current Swedbank exchange rates.
+Exchange currencies **within an account**. Debits the source currency balance and credits the target currency balance atomically using Swedbank exchange rates.
 
 Body:
 ```json
 {
-  "amount": 100.00,
+  "accountId": "11111111-1111-1111-1111-111111111111",
+  "amount": 50.00,
   "fromCurrency": "USD",
   "toCurrency": "EUR"
 }
@@ -142,13 +156,21 @@ Body:
 Response (200 OK):
 ```json
 {
-  "originalAmount": 100.00,
+  "accountId": "11111111-1111-1111-1111-111111111111",
+  "originalAmount": 50.00,
   "originalCurrency": "USD",
-  "convertedAmount": 85.38,
+  "convertedAmount": 46.42,
   "targetCurrency": "EUR",
-  "exchangeRate": 0.8538
+  "exchangeRate": 0.9284,
+  "sourceBalanceAfter": 50.00,
+  "targetBalanceAfter": 46.42
 }
 ```
+
+Error responses:
+- 400 BAD_REQUEST: Invalid request (unknown currency, negative amount, etc.)
+- 404 NOT_FOUND: Source currency balance does not exist for the account
+- 422 UNPROCESSABLE_ENTITY: Insufficient funds in source currency
 
 ### Example curl
 ```bash
@@ -167,10 +189,10 @@ curl -X POST "http://localhost:8080/api/v1/accounts/$ACCOUNT_ID/debits" \
   -H "Content-Type: application/json" \
   -d '{"amount":25.00,"currency":"USD"}'
 
-# Convert 100 USD to EUR using current Swedbank rates
+# Convert 50 USD to EUR using Swedbank rates (transfers between account balances)
 curl -X POST "http://localhost:8080/api/v1/exchange" \
   -H "Content-Type: application/json" \
-  -d '{"amount":100.00,"fromCurrency":"USD","toCurrency":"EUR"}'
+  -d '{"accountId":"'$ACCOUNT_ID'","amount":50.00,"fromCurrency":"USD","toCurrency":"EUR"}'
 ```
 
 ### Example PowerShell
@@ -191,10 +213,10 @@ Invoke-RestMethod -Uri "$API_URL/$ACCOUNT_ID/debits" -Method Post `
   -Headers @{"Content-Type" = "application/json"} `
   -Body '{"amount":25.00,"currency":"USD"}' | ConvertTo-Json
 
-# Convert 100 USD to EUR using current Swedbank rates
+# Convert 50 USD to EUR using Swedbank rates (transfers between account balances)
 Invoke-RestMethod -Uri "http://localhost:8080/api/v1/exchange" -Method Post `
   -Headers @{"Content-Type" = "application/json"} `
-  -Body '{"amount":100.00,"fromCurrency":"USD","toCurrency":"EUR"}' | ConvertTo-Json
+  -Body '{"accountId":"'$ACCOUNT_ID'","amount":50.00,"fromCurrency":"USD","toCurrency":"EUR"}' | ConvertTo-Json
 ```
 
 ## Testing
@@ -212,21 +234,27 @@ Covered areas:
 
 Run all tests:
 ```powershell
+.\mvnw test
+# or with system Maven:
 mvn test
 ```
 
 Run a single test class:
 ```powershell
+.\mvnw -Dtest=AccountBalanceServiceTest test
+# or:
 mvn -Dtest=AccountBalanceServiceTest test
 ```
 
 More detailed testing notes are available in [src/test/README.md](src/test/README.md).
 
 ## Notes
-- Debit fails with HTTP 422 when there is not enough balance in the specified currency.
-- Debit fails with HTTP 502 if external logging endpoint fails.
-- Currency support: EUR (base), USD, SEK, GBP with Swedbank exchange rates.
-- Exchange rates are fetched from Swedbank (https://www.swedbank.ee/private/d2d/payments2/rates/currencyExchange).
-- Each account can hold multiple currency balances tracked independently.
-- Account balances are queried separately per currency.
-- Conversions use ECB reference rates with 2-decimal precision (HALF_EVEN rounding).
+- **Maven Wrapper:** The project includes a Maven wrapper (`mvnw` / `mvnw.cmd`) for convenient builds without requiring Maven installation.
+- **Debit fails** with HTTP 422 when there is not enough balance in the specified currency.
+- **Debit fails** with HTTP 502 if external logging endpoint fails.
+- **Exchange transfers money** between account currency balances (e.g., 50 USD → EUR). Both debits and credits happen atomically in a single transaction.
+- **Currency support:** EUR (base), USD, SEK, GBP with Swedbank exchange rates.
+- **Exchange rates:** Based on Swedbank (https://www.swedbank.ee/private/d2d/payments2/rates/currencyExchange).
+- **Each account** can hold multiple independent currency balances.
+- **Balances** are queried separately per currency using the query parameter `?currency=USD`.
+- **Precision:** 2-decimal places with HALF_EVEN (banker's) rounding for all monetary operations.
