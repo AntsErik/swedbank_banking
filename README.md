@@ -3,7 +3,7 @@
 Multi-currency account management with:
 - Add/debit money to accounts in multiple currencies (EUR, USD, SEK, GBP)
 - Separate balance tracking per currency
-- Real-time currency exchange using Swedbank rates
+- Currency exchange using Swedbank rates (loaded from local CSV with fallback)
 - Simulated external call before debit (httpstat.us)
 - Controller -> Service -> Repository structure
 - H2 database persistence
@@ -254,7 +254,15 @@ More detailed testing notes are available in [src/test/README.md](src/test/READM
 - **Debit fails** with HTTP 502 if external logging endpoint fails.
 - **Exchange transfers money** between account currency balances (e.g., 50 USD → EUR). Both debits and credits happen atomically in a single transaction.
 - **Currency support:** EUR (base), USD, SEK, GBP with Swedbank exchange rates.
-- **Exchange rates:** Based on Swedbank (https://www.swedbank.ee/private/d2d/payments2/rates/currencyExchange).
+- **Exchange rates:** Loaded from src/main/resources/currency-exchange-rates-2026-04-24.csv. The system defaults to internal fallback rates if the file is missing or corrupted.
 - **Each account** can hold multiple independent currency balances.
 - **Balances** are queried separately per currency using the query parameter `?currency=USD`.
 - **Precision:** 2-decimal places with HALF_EVEN (banker's) rounding for all monetary operations.
+
+## Configuration & Data
+### Exchange Rates
+The application loads daily exchange rates from a CSV file located at:
+`src/main/resources/currency-exchange-rates-2026-04-24.csv`
+
+To update the rates, simply modify the values in the CSV file. The format is:
+`CurrencyCode, ToEurRate, FromEurRate`
